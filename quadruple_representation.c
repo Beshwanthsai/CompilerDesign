@@ -51,6 +51,7 @@ void generate3AC(char postfix[], char lhs) {
     int tTop = -1;
     int localTempCount = tempCount;
 
+    printf("\n--- Three Address Code ---\n");
     for (int i = 0; i < (int)strlen(postfix); i++) {
         char c = postfix[i];
 
@@ -69,6 +70,35 @@ void generate3AC(char postfix[], char lhs) {
         printf("%c = t%d\n", lhs, localTempCount - 1);
     else
         printf("%c = %c\n", lhs, tempStack[tTop]); 
+}
+
+void generateQuadruple(char postfix[], char lhs) {
+    char tempStack[100];
+    int tTop = -1;
+    int localTempCount = tempCount;
+
+    printf("\n--- Quadruple Representation ---\n");
+    printf("Operator\tArg1\tArg2\tResult\n");
+    printf("----------------------------------------\n");
+    
+    for (int i = 0; i < (int)strlen(postfix); i++) {
+        char c = postfix[i];
+
+        if (isalnum((unsigned char)c)) {
+            tempStack[++tTop] = c;
+        } else {
+            char op2 = tempStack[tTop--];
+            char op1 = tempStack[tTop--];
+            printf("%c\t\t%c\t%c\tt%d\n", c, op1, op2, localTempCount);
+            tempStack[++tTop] = 'A' + (localTempCount - 1); 
+            localTempCount++;
+        }
+    }
+
+    if (localTempCount > 1)
+        printf("=\t\tt%d\t-\t%c\n", localTempCount - 1, lhs);
+    else
+        printf("=\t\t%c\t-\t%c\n", tempStack[tTop], lhs);
 }
 
 int main() {
@@ -92,8 +122,9 @@ int main() {
 
     infixToPostfix(rhs, postfix);
     printf("\nPostfix: %s\n", postfix);
-    printf("\n--- Three Address Code ---\n");
+    
     generate3AC(postfix, lhs);
+    generateQuadruple(postfix, lhs);
 
     return 0;
 }
