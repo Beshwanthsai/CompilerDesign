@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>cirq_varq_manufacturing.py — Colorful Code</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f5f5f5; --text:#1f2937;
+    --kw:#dc2626; --func:#059669; --str:#d97706; --num:#7c3aed; --cmt:#6b7280;
+  }
+  body{background:var(--bg);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Segoe UI Mono",monospace;margin:0;padding:28px;}
+  header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+  h1{font-size:1.1rem;margin:0;font-weight:600}
+  p{margin:0;color:var(--cmt);font-size:0.92rem}
+  .toolbar{margin-left:auto;display:flex;gap:8px;}
+  button{background:#0f1724;border:1px solid #233044;color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+  button:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+  main{background:var(--panel);border-radius:10px;padding:18px;box-shadow:0 6px 18px rgba(2,6,23,0.7)}
+  pre{white-space:pre;overflow:auto;margin:0;font-size:13.5px;line-height:1.45}
+  .keyword{color:var(--kw);font-weight:700}
+  .func{color:var(--func)}
+  .string{color:var(--str)}
+  .number{color:var(--num)}
+  .comment{color:var(--cmt);font-style:italic}
+  .lt{color:#9fb0ff} /* less-than like tokens */
+  footer{margin-top:12px;color:var(--cmt);font-size:0.85rem}
+  @media (max-width:720px){body{padding:12px}pre{font-size:13px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>cirq_varq_manufacturing.py</h1>
+    <p>Tiny variational Cirq example for a toy manufacturing QUBO — copy or download.</p>
+  </div>
+  <div class="toolbar">
+    <button id="downloadBtn">Download .py</button>
+    <button id="copyBtn">Copy to Clipboard</button>
+  </div>
+</header>
+
+<main>
+<pre id="code"><span class="comment"># cirq_varq_manufacturing.py</span>
+<span class="comment"># Minimal variational approach with Cirq for toy manufacturing QUBO</span>
+<span class="keyword">import</span> cirq
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np
+<span class="keyword">from</span> scipy.optimize <span class="keyword">import</span> minimize
+
+<span class="keyword">def</span> <span class="func">build_hamiltonian</span>():
+    <span class="comment"># Same toy: H = x0 + 2*x1 + x2 + 5*x0*x1 (x in {0,1})</span>
+    <span class="keyword">def</span> <span class="func">energy</span>(bitstring):
+        x = np.array(bitstring)
+        cost = x[0] + 2*x[1] + x[2] + 5*x[0]*x[1]
+        <span class="keyword">return</span> cost
+    <span class="keyword">return</span> energy
+
+<span class="keyword">def</span> <span class="func">ansatz_circuit</span>(params, qubits):
+    circuit = cirq.Circuit()
+    <span class="comment"># single-layer RX + CZ entanglers + RZ</span>
+    <span class="keyword">for</span> i, q <span class="keyword">in</span> enumerate(qubits):
+        circuit.append(cirq.rx(params[i])(q))
+    <span class="keyword">for</span> i <span class="keyword">in</span> range(len(qubits)-1):
+        circuit.append(cirq.CZ(qubits[i], qubits[i+1]))
+    <span class="keyword">for</span> i, q <span class="keyword">in</span> enumerate(qubits):
+        circuit.append(cirq.rz(params[len(qubits)+i])(q))
+    circuit.append(cirq.measure(*qubits, key='m'))
+    <span class="keyword">return</span> circuit
+
+<span class="keyword">def</span> <span class="func">expectation_from_simulator</span>(params, qubits, simulator, shots=1024):
+    circuit = ansatz_circuit(params, qubits)
+    result = simulator.run(circuit, repetitions=shots)
+    counts = result.histogram(key='m')
+    energy_fn = build_hamiltonian()
+    total = 0
+    tot_shots = 0
+    <span class="keyword">for</span> meas_int, count <span class="keyword">in</span> counts.items():
+        bits = [ (meas_int >> i) & 1 <span class="keyword">for</span> i <span class="keyword">in</span> range(len(qubits)) ]
+        total += energy_fn(bits) * count
+        tot_shots += count
+    <span class="keyword">return</span> total / tot_shots
+
+<span class="keyword">def</span> <span class="func">objective</span>(params, qubits, simulator):
+    <span class="keyword">return</span> expectation_from_simulator(params, qubits, simulator, shots=512)
+
+<span class="keyword">if</span> __name__ == "__main__":
+    n = 3
+    qubits = [cirq.LineQubit(i) <span class="keyword">for</span> i <span class="keyword">in</span> range(n)]
+    simulator = cirq.Simulator()
+    <span class="comment"># initialize parameters: 2*n (RX and RZ layers)</span>
+    init_params = np.random.uniform(-1, 1, size=2*n)
+    res = minimize(lambda p: objective(p, qubits, simulator), init_params,
+                   method='Nelder-Mead', options={'maxiter':200})
+    print("Optimization success:", res.success)
+    print("Final energy estimate:", res.fun)
+    circ = ansatz_circuit(res.x, qubits)
+    sample = simulator.run(circ, repetitions=1024)
+    print("Sample counts:", sample.histogram(key='m'))</pre>
+</main>
+
+<footer>
+  <p>Tip: Click <strong>Download .py</strong> to save the file, or <strong>Copy to Clipboard</strong> to paste directly into your editor.</p>
+</footer>
+
+<script>
+  const codeEl = document.getElementById('code');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const copyBtn = document.getElementById('copyBtn');
+
+  downloadBtn.addEventListener('click', ()=> {
+    const text = codeEl.innerText;
+    const blob = new Blob([text], {type: 'text/x-python'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cirq_varq_manufacturing.py';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(codeEl.innerText);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(()=> copyBtn.textContent = 'Copy to Clipboard', 1500);
+    } catch (e) {
+      copyBtn.textContent = 'Failed — select & copy';
+      setTimeout(()=> copyBtn.textContent = 'Copy to Clipboard', 2000);
+    }
+  });
+</script>
+</body>
+</html>
